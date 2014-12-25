@@ -1,14 +1,14 @@
-#include "logistic_sgd.h"
+#include "mlp.h"
 #include <iostream>
 #include <time.h>
 #include <string>
 
 using namespace std;
 
-void sgd_optimization_mnist(double learning_rate=0.13, int n_epochs=1000,
-        string dataset="mnist.pk.gz", int n_in = 28*28, int n_out = 10, int batch_size=600)
+void test_mlp(double learning_rate=0.01, double L1_reg = 0.00, double L2_reg = 0.0001, int n_epochs=1000,
+        string dataset="mnist.pk.gz", int n_in = 28*28, int n_hidden = 500, int n_out = 10, int batch_size = 20)
 {
-    srand(0);
+    srand(226);
 
     Dataset datasets(50000, 10000, 10000, n_in, 1);
     datasets.load_data_from_binary_file(datasets.trn_dat, "../data/train-images-idx3-ubyte", 50000*n_in, 16);
@@ -22,9 +22,9 @@ void sgd_optimization_mnist(double learning_rate=0.13, int n_epochs=1000,
     int n_valid_batches = datasets.vld_smp / batch_size;
     int n_test_batches = datasets.vld_smp / batch_size;
 
-    LogisticRegression classifier(n_in, n_out, batch_size);
+    MLP classifier(n_in, n_hidden, n_out, batch_size);
 
-    int patience = 5000;
+    int patience = 10000;
     int patience_increase = 2;
     double improvement_threshold = 0.995;
 
@@ -49,7 +49,7 @@ void sgd_optimization_mnist(double learning_rate=0.13, int n_epochs=1000,
             trn_x_input = datasets.trn_dat + minibatch_index * batch_size * n_in;
             trn_y_input = datasets.trn_lbl + minibatch_index * batch_size; 
 
-            classifier.updates(trn_x_input, trn_y_input, learning_rate);
+            classifier.update(trn_x_input, trn_y_input, learning_rate, L1_reg, L2_reg);
             iter = (epoch - 1) * n_train_batches + minibatch_index;
 
             if ((iter + 1) % validation_frequency == 0)
@@ -102,13 +102,13 @@ void sgd_optimization_mnist(double learning_rate=0.13, int n_epochs=1000,
 
     cout << "Optimization complete with best validation score of " << best_validation_loss * 100 
         << "%, with test performance " << test_score * 100 << "%" << endl;
-    cout << "The code run for " << epoch << "epochs, with " << 1.0 * epoch /(end_time - start_time) << " epochs/sec " << endl;
+    cout << "The code run for " << epoch << "epochs, with " << 1.0 * epoch /(end_time - start_time) << " epochs/sec "<< endl;
 }
 
 
 int main()
 {
-    sgd_optimization_mnist();
+    test_mlp();
 
     return 0;
 }

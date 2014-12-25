@@ -9,6 +9,8 @@ class LogisticRegression
 public:
     double *W;
     double *b;
+    double *p_y_given_x;
+    double *y_pred;
 
     LogisticRegression(int n_in, int n_out, int batch_size) 
     {
@@ -40,7 +42,7 @@ public:
 
     double negative_log_likelihood(double *input, double *y)
     {
-        get_p_y_given_x(input);   
+        output(input);   
         double val=0.0;
         for (int b=0; b<batch_size; b++)
         {
@@ -52,7 +54,7 @@ public:
 
     double errors(double *input, double *y)
     {
-        get_p_y_given_x(input);
+        output(input);
         argmax(p_y_given_x);
 
         double cout = 0;
@@ -63,9 +65,24 @@ public:
         return cout / batch_size;
     };
 
+    void output(double *input)
+    {
+        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
+                batch_size, n_out, n_in, 1.0,
+                input, n_in, W, n_in,
+                0.0, p_y_given_x, n_out);
+                
+        cblas_dger(CblasRowMajor,
+                batch_size, n_out, 1.0,
+                I, 1, b, 1,
+                p_y_given_x, n_out);
+
+        softmax(p_y_given_x);
+    };
+
     void updates(double *input, double *y, double lr)
     {
-        get_p_y_given_x(input);
+        output(input);
 
         for (int b=0; b<batch_size; b++)
         {
@@ -84,49 +101,6 @@ public:
                 n_out, 1, batch_size, (-1)*lr/batch_size,
                 p_y_given_x, n_out, I, batch_size,
                 1.0, b, 1);
-    };
-
-private:
-    int batch_size;
-    int n_in;
-    int n_out;
-
-    double *p_y_given_x;
-    double *y_pred;
-    double *I;
-
-    void get_p_y_given_x(double *input)
-    {
-        cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                batch_size, n_out, n_in, 1.0,
-                input, n_in, W, n_in,
-                0.0, p_y_given_x, n_out);
-                
-        cblas_dger(CblasRowMajor,
-                batch_size, n_out, 1.0,
-                I, 1, b, 1,
-                p_y_given_x, n_out);
-
-        softmax(p_y_given_x);
-    };
-
-    void softmax(double *p_y_given_x)
-    {
-        double sum;
-        for (int b=0; b<batch_size; b++) 
-        {
-            sum = 0.0;
-            for (int n=0; n<n_out; n++)
-            {
-                p_y_given_x[b*n_out+n] = exp(p_y_given_x[b*n_out+n]);
-                sum += p_y_given_x[b*n_out+n];
-            }
-
-            for (int n=0; n<n_out; n++)
-            {
-                p_y_given_x[b*n_out+n] = p_y_given_x[b*n_out+n]/sum;
-            }
-        }
     };
 
     void argmax(double *p_y_given_x)
@@ -148,5 +122,32 @@ private:
             y_pred[b] = index;
         }
     };
+
+private:
+    int batch_size;
+    int n_in;
+    int n_out;
+
+    double *I;
+
+    void softmax(double *p_y_given_x)
+    {
+        double sum;
+        for (int b=0; b<batch_size; b++) 
+        {
+            sum = 0.0;
+            for (int n=0; n<n_out; n++)
+            {
+                p_y_given_x[b*n_out+n] = exp(p_y_given_x[b*n_out+n]);
+                sum += p_y_given_x[b*n_out+n];
+            }
+
+            for (int n=0; n<n_out; n++)
+            {
+                p_y_given_x[b*n_out+n] = p_y_given_x[b*n_out+n]/sum;
+            }
+        }
+    };
+
 };
 
